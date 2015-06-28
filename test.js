@@ -1,6 +1,12 @@
 var tape = require('tape')
-var memdb = require('memdb')
+var mem = require('memdb')
 var changes = require('./')
+
+function memdb (opts) {
+  opts = opts || {}
+  opts.valueEncoding = opts.valueEncoding || 'binary'
+  return mem(opts)
+}
 
 tape('append and stream', function(t) {
   var feed = changes(memdb())
@@ -135,6 +141,20 @@ tape('keys/values only', function(t) {
         t.same(changes.length, 1, 'limited to 1 change')
         t.same(changes[0], 1)
       })
+    })
+  })
+})
+
+tape('json valueEncoding', function(t) {
+  var feed = changes(memdb({ valueEncoding: 'json' }))
+  var data = { hello: 'world' }
+
+  feed.append(data, function() {
+    feed.createReadStream({ limit: 1 }, function(err, changes) {
+      t.notOk(err, 'no err')
+      t.same(changes.length, 1, 'limited to 1 change')
+      t.same(changes[0], { change:1, value: data })
+      t.end()
     })
   })
 })

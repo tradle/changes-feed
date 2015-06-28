@@ -11,6 +11,7 @@ var noop = function() {}
 module.exports = function(db) {
   var feed = {}
   var lock = mutexify()
+  var valueEncoding = db.options.valueEncoding || 'binary'
 
   var ensureCount = thunky(function(cb) {
     if (feed.change) return cb()
@@ -34,7 +35,9 @@ module.exports = function(db) {
 
   feed.append = function(value, cb) {
     if (!cb) cb = noop
-    if (!Buffer.isBuffer(value)) value = new Buffer(value)
+    if (valueEncoding === 'binary' && !Buffer.isBuffer(value)) {
+      value = new Buffer(value)
+    }
 
     lock(function(release) {
       ensureCount(function(err) {
@@ -67,7 +70,7 @@ module.exports = function(db) {
 
     if (opts.live) {
       var ls = from.obj(function read(size, cb) {
-        db.get(lexint.pack(since+1, 'hex'), {valueEncoding:'binary'}, function(err, value) {
+        db.get(lexint.pack(since+1, 'hex'), {valueEncoding:valueEncoding}, function(err, value) {
           if (err && err.notFound) return feed.notify.push([read, cb])
           if (err) return cb(err)
           cb(null, toResult(++since, value, retOpts))
@@ -89,7 +92,7 @@ module.exports = function(db) {
       keys: keys,
       values: values,
       reverse: opts.reverse,
-      valueEncoding: 'binary'
+      valueEncoding: valueEncoding
     })
 
     var format = function(data, enc, cb) {
