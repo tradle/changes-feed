@@ -158,3 +158,16 @@ tape('json valueEncoding', function(t) {
     })
   })
 })
+
+tape('get()', function(t) {
+  var feed = changes(memdb({ valueEncoding: 'json' }))
+  var data = { hello: 'world' }
+
+  feed.append(data, function() {
+    feed.get(1, function(err, value) {
+      t.notOk(err, 'no err')
+      t.same(value, data)
+      t.end()
+    })
+  })
+})

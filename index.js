@@ -70,7 +70,7 @@ module.exports = function(db) {
 
     if (opts.live) {
       var ls = from.obj(function read(size, cb) {
-        db.get(lexint.pack(since+1, 'hex'), {valueEncoding:valueEncoding}, function(err, value) {
+        feed.get(since + 1, function(err, value) {
           if (err && err.notFound) return feed.notify.push([read, cb])
           if (err) return cb(err)
           cb(null, toResult(++since, value, retOpts))
@@ -103,6 +103,16 @@ module.exports = function(db) {
     }
 
     return collect(pump(rs, through.obj(format)), cb)
+  }
+
+  feed.get = function (id, opts, cb) {
+    if (typeof opts === 'function') {
+      cb = opts
+      opts = {}
+    }
+
+    opts.valueEncoding = valueEncoding
+    return db.get(lexint.pack(id, 'hex'), opts, cb)
   }
 
   function toResult (key, val, opts) {
