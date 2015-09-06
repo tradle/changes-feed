@@ -77,6 +77,10 @@ module.exports = function(db) {
         })
       })
 
+      db.once('closing', function () {
+        ls.destroy()
+      })
+
       if (cb) {
         ls.on('data', function (data) {
           cb(null, data)
