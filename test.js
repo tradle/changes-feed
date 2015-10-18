@@ -1,5 +1,6 @@
 var tape = require('tape')
 var mem = require('memdb')
+var collect = require('stream-collector')
 var changes = require('./')
 
 function memdb (opts) {
@@ -14,7 +15,7 @@ tape('append and stream', function(t) {
   feed.append('hello', function(err, node) {
     t.notOk(err, 'no err')
     t.same(node, {change:1, value:new Buffer('hello')})
-    feed.createReadStream(function(err, changes) {
+    collect(feed.createReadStream(), function(err, changes) {
       t.notOk(err, 'no err')
       t.same(changes.length, 1, '1 change')
       t.same(changes[0], {change:1, value:new Buffer('hello')})
@@ -28,7 +29,7 @@ tape('append twice and stream', function(t) {
 
   feed.append('hello', function() {
     feed.append('world', function() {
-      feed.createReadStream(function(err, changes) {
+      collect(feed.createReadStream(), function(err, changes) {
         t.notOk(err, 'no err')
         t.same(changes.length, 2, '2 changes')
         t.same(changes[0], {change:1, value:new Buffer('hello')})
@@ -71,7 +72,7 @@ tape('reverse', function(t) {
 
   feed.append('hello', function() {
     feed.append('world', function() {
-      feed.createReadStream({ reverse: true }, function(err, changes) {
+      collect(feed.createReadStream({ reverse: true }), function(err, changes) {
         t.notOk(err, 'no err')
         t.same(changes.length, 2, '2 changes')
         t.same(changes[0], {change:2, value:new Buffer('world')})
@@ -87,7 +88,7 @@ tape('limit', function(t) {
 
   feed.append('hello', function() {
     feed.append('world', function() {
-      feed.createReadStream({ limit: 1 }, function(err, changes) {
+      collect(feed.createReadStream({ limit: 1 }), function(err, changes) {
         t.notOk(err, 'no err')
         t.same(changes.length, 1, 'limited to 1 change')
         t.same(changes[0], {change:1, value:new Buffer('hello')})
@@ -111,32 +112,34 @@ tape('count', function(t) {
 })
 
 tape('keys/values only', function(t) {
-  t.plan(14)
+  t.plan(10)
 
   var put = ['hello', 'world']
   var feed = changes(memdb())
   var lastChange = 1
   var lastValIdx = 0
 
-  feed.createReadStream({ live: true, limit: 1, keys: false }, function (err, change) {
-    t.notOk(err, 'no err')
-    t.same(change, new Buffer(put[lastValIdx++]))
-  })
+  feed.createReadStream({ live: true, limit: 1, keys: false })
+    .on('error', t.error)
+    .on('data', function (change) {
+      t.same(change, new Buffer(put[lastValIdx++]))
+    })
 
-  feed.createReadStream({ live: true, limit: 1, values: false }, function (err, change) {
-    t.notOk(err, 'no err')
-    t.same(change, lastChange++)
-  })
+  feed.createReadStream({ live: true, limit: 1, values: false })
+    .on('error', t.error)
+    .on('data', function (change) {
+      t.same(change, lastChange++)
+    })
 
   feed.append(put[0], function() {
     feed.append(put[1], function() {
-      feed.createReadStream({ limit: 1, keys: false }, function (err, changes) {
+      collect(feed.createReadStream({ limit: 1, keys: false }), function (err, changes) {
         t.notOk(err, 'no err')
         t.same(changes.length, 1, 'limited to 1 change')
         t.same(changes[0], new Buffer(put[0]))
       })
 
-      feed.createReadStream({ limit: 1, values: false }, function (err, changes) {
+      collect(feed.createReadStream({ limit: 1, values: false }), function (err, changes) {
         t.notOk(err, 'no err')
         t.same(changes.length, 1, 'limited to 1 change')
         t.same(changes[0], 1)
@@ -150,7 +153,7 @@ tape('json valueEncoding', function(t) {
   var data = { hello: 'world' }
 
   feed.append(data, function() {
-    feed.createReadStream({ limit: 1 }, function(err, changes) {
+    collect(feed.createReadStream({ limit: 1 }), function(err, changes) {
       t.notOk(err, 'no err')
       t.same(changes.length, 1, 'limited to 1 change')
       t.same(changes[0], { change:1, value: data })

@@ -56,7 +56,7 @@ module.exports = function(db) {
     })
   }
 
-  feed.createReadStream = function(opts, cb) {
+  feed.createReadStream = function (opts) {
     if (typeof opts === 'function') return feed.createReadStream(null, opts)
     if (!opts) opts = {}
 
@@ -77,17 +77,16 @@ module.exports = function(db) {
         })
       })
 
-      db.once('closing', function () {
-        ls.destroy()
+      db.once('closing', destroy)
+      ls.once('close', function () {
+        db.removeListener('closing', destroy)
       })
 
-      if (cb) {
-        ls.on('data', function (data) {
-          cb(null, data)
-        })
-      }
-
       return ls
+
+      function destroy () {
+        ls.destroy()
+      }
     }
 
     var rs = db.createReadStream({
@@ -106,7 +105,7 @@ module.exports = function(db) {
       cb(null, toResult(key, val, retOpts))
     }
 
-    return collect(pump(rs, through.obj(format)), cb)
+    return pump(rs, through.obj(format))
   }
 
   feed.get = function (id, opts, cb) {
