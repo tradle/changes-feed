@@ -40,6 +40,28 @@ tape('append twice and stream', function(t) {
   })
 })
 
+tape('append twice and stream (2)', function(t) {
+  var feed = changes(memdb())
+
+  feed.append('hello', function () {
+    process.nextTick(function () {
+      t.equal(feed.batch.length, 2)
+    })
+
+    feed.append('hello again')
+    feed.append('world', function() {
+      collect(feed.createReadStream(), function(err, changes) {
+        t.notOk(err, 'no err')
+        t.same(changes.length, 3, '2 changes')
+        t.same(changes[0], {change:1, value:new Buffer('hello')})
+        t.same(changes[1], {change:2, value:new Buffer('hello again')})
+        t.same(changes[2], {change:3, value:new Buffer('world')})
+        t.end()
+      })
+    })
+  })
+})
+
 tape('append and live stream', function(t) {
   var feed = changes(memdb())
 
