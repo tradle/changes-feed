@@ -1,3 +1,4 @@
+var EventEmitter = require('events').EventEmitter
 var lexint = require('lexicographic-integer')
 var collect = require('stream-collector')
 var through = require('through2')
@@ -22,6 +23,7 @@ module.exports = function(db) {
   })
 
   feed.change = 0
+  feed.queued = 0
   feed.notify = []
   feed.batch = []
 
@@ -33,6 +35,7 @@ module.exports = function(db) {
   }
 
   feed.append = function(value, cb) {
+    feed.queued++
     if (!cb) cb = noop
     if (valueEncoding === 'binary' && !Buffer.isBuffer(value)) {
       value = new Buffer(value)
@@ -74,6 +77,8 @@ module.exports = function(db) {
           batch.forEach(function (item, i) {
             item.callback(err, { change: batch[i].change, value: value })
           })
+
+          feed.queued = 0
         })
       })
     })
