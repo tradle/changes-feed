@@ -7,8 +7,14 @@ var pump = require('pump')
 var thunky = require('thunky')
 
 var noop = function() {}
+var defaultStart = 1
 
-module.exports = function(db) {
+module.exports = function(db, feedOpts) {
+  var start = defaultStart
+  if (feedOpts && typeof feedOpts.start === 'number') {
+    start = feedOpts.start
+  }
+
   var feed = {}
   var valueEncoding = db.options.valueEncoding || 'binary'
 
@@ -22,7 +28,8 @@ module.exports = function(db) {
     })
   })
 
-  feed.change = 0
+  feed.start = start
+  feed.change = start - 1
   feed.queued = 0
   feed.notify = []
   feed.batch = []
@@ -30,7 +37,7 @@ module.exports = function(db) {
   feed.count = function(cb) {
     ensureCount(function (err) {
       if (err) return cb(err)
-      cb(null, feed.change)
+      cb(null, feed.change - start + 1)
     });
   }
 
@@ -88,7 +95,7 @@ module.exports = function(db) {
     if (typeof opts === 'function') return feed.createReadStream(null, opts)
     if (!opts) opts = {}
 
-    var since = opts.since || 0
+    var since = opts.since || start - 1
     var keys = opts.keys !== false
     var values = opts.values !== false
     var retOpts = {
