@@ -19,7 +19,6 @@ module.exports = function(db, feedOpts) {
   var valueEncoding = db.options.valueEncoding || 'binary'
 
   var ensureCount = thunky(function(cb) {
-    if (feed.change) return cb()
     collect(db.createKeyStream({reverse:true, limit:1}), function(err, keys) {
       if (err) return cb(err)
       if (!keys.length) return cb()
