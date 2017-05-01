@@ -9,7 +9,7 @@ function memdb (opts) {
   return mem(opts)
 }
 
-const initVariants = [null, { start: 0 }]
+var initVariants = [null, { start: 0 }]
 initVariants.forEach(runTests)
 
 function runTests (feedOpts) {
@@ -127,6 +127,20 @@ function runTests (feedOpts) {
           t.notOk(err, 'no err')
           t.same(changes.length, 1, 'limited to 1 change')
           t.same(changes[0], {change:feed.start, value:new Buffer('hello')})
+          t.end()
+        })
+      })
+    })
+  })
+
+  tape('since', function(t) {
+    var feed = changes(memdb())
+    feed.append('hello', function() {
+      feed.append('world', function() {
+        collect(feed.createReadStream({ since: feed.start }), function (err, changes) {
+          t.notOk(err, 'no err')
+          t.same(changes.length, 1, 'streamed with offset')
+          t.same(changes[0], {change:feed.start + 1, value:new Buffer('world')})
           t.end()
         })
       })

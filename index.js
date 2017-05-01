@@ -100,7 +100,7 @@ module.exports = function(db, feedOpts) {
     if (typeof opts === 'function') return feed.createReadStream(null, opts)
     if (!opts) opts = {}
 
-    var since = opts.since || start - 1
+    var since = typeof opts.since === 'number' ? opts.since : start - 1
     var keys = opts.keys !== false
     var values = opts.values !== false
     var retOpts = {
