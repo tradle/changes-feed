@@ -17,22 +17,26 @@ module.exports = function(db, feedOpts) {
 
   var feed = {}
   var valueEncoding = db.options.valueEncoding || 'binary'
-
+  var ready
   var ensureCount = thunky(function(cb) {
     collect(db.createKeyStream({reverse:true, limit:1}), function(err, keys) {
       if (err) return cb(err)
       if (!keys.length) return cb()
       feed.change = lexint.unpack(keys[0], 'hex')
+      ready = true
+      feed.tentativeChange = feed.change + queuedBeforeReady
       cb()
     })
   })
 
+  var queuedBeforeReady = 0
   feed.start = start
   feed.change = start - 1
+  feed.tentativeChange = feed.change
   feed.queued = 0
   feed.notify = []
   feed.batch = []
-
+  feed.onready = ensureCount
   feed.count = function(cb) {
     ensureCount(function (err) {
       if (err) return cb(err)
@@ -42,6 +46,9 @@ module.exports = function(db, feedOpts) {
 
   feed.append = function(value, cb) {
     feed.queued++
+    feed.tentativeChange++
+    if (!ready) queuedBeforeReady++
+
     if (!cb) cb = noop
     if (valueEncoding === 'binary' && !Buffer.isBuffer(value)) {
       value = new Buffer(value)

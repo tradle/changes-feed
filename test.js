@@ -209,4 +209,16 @@ function runTests (feedOpts) {
       })
     })
   })
+
+  tape('feed.tentativeChange', function(t) {
+    var feed = changes(memdb({ valueEncoding: 'json' }))
+    var data = { hello: 'world' }
+
+    feed.append(data, function() {
+      t.equal(feed.tentativeChange, feed.change)
+      t.end()
+    })
+
+    t.equal(feed.tentativeChange, feed.change + 1)
+  })
 }
