@@ -73,6 +73,7 @@ module.exports = function(db, feedOpts) {
             value: item.value
           }
         }), function(err) {
+          feed.queued = 0
           var notify = feed.notify
 
           if (notify.length) {
@@ -83,8 +84,6 @@ module.exports = function(db, feedOpts) {
           batch.forEach(function (item, i) {
             item.callback(err, { change: batch[i].change, value: value })
           })
-
-          feed.queued = 0
         })
       })
     })
