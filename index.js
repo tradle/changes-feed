@@ -158,6 +158,10 @@ module.exports = function(db, feedOpts) {
     return db.get(lexint.pack(id, 'hex'), opts, cb)
   }
 
+  feed.del = function (id, cb) {
+    return db.del(lexint.pack(id, 'hex'), cb)
+  }
+
   function toResult (key, val, opts) {
     return !opts.keys ? val :
       !opts.values ? key :

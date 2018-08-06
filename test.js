@@ -235,4 +235,24 @@ function runTests (feedOpts) {
 
     t.equal(feed.tentativeChange, feed.change + 1)
   })
+
+  tape('get()', function(t) {
+    var feed = changes(memdb({ valueEncoding: 'json' }))
+    var data = { hello: 'world' }
+
+    feed.append(data, function() {
+      feed.get(feed.start, function(err, value) {
+        t.notOk(err, 'no err')
+        t.same(value, data)
+
+        feed.del(feed.start, function (err) {
+          t.notOk(err, 'no err')
+          feed.get(feed.start, function(err, value) {
+            t.ok(err)
+            t.end()
+          })
+        })
+      })
+    })
+  })
 }
