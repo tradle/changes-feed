@@ -1,3 +1,5 @@
+> Fork of [changes-feed](https://github.com/mafintosh/changes-feed) maintained by [@tradle](https://github.com/tradle).
+
 # changes-feed
 
 Basic changes-feed implementation that runs on top of leveldb
