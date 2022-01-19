@@ -1,25 +1,25 @@
-var EventEmitter = require('events').EventEmitter
-var lexint = require('lexicographic-integer')
-var collect = require('stream-collector')
-var through = require('through2')
-var from = require('from2')
-var pump = require('pump')
-var thunky = require('thunky')
+const lexint = require('lexicographic-integer')
+const collect = require('stream-collector')
+const through = require('through2')
+const from = require('from2')
+const pump = require('pump')
+const thunky = require('thunky')
 
-var noop = function() {}
-var defaultStart = 1
+const noop = function () {}
+const defaultStart = 1
 
-module.exports = function(db, feedOpts) {
-  var start = defaultStart
+module.exports = function (db, feedOpts) {
+  let start = defaultStart
   if (feedOpts && typeof feedOpts.start === 'number') {
     start = feedOpts.start
   }
 
-  var feed = {}
-  var valueEncoding = db.options.valueEncoding || 'binary'
-  var ready
-  var ensureCount = thunky(function(cb) {
-    collect(db.createKeyStream({reverse:true, limit:1}), function(err, keys) {
+  const feed = {}
+  const valueEncoding = db.options.valueEncoding || 'binary'
+  let ready
+  let queuedBeforeReady = 0
+  const ensureCount = thunky(function (cb) {
+    collect(db.createKeyStream({ reverse: true, limit: 1 }), function (err, keys) {
       if (err) return cb(err)
       if (!keys.length) return cb()
       feed.change = lexint.unpack(keys[0], 'hex')
@@ -29,7 +29,6 @@ module.exports = function(db, feedOpts) {
     })
   })
 
-  var queuedBeforeReady = 0
   feed.start = start
   feed.change = start - 1
   feed.tentativeChange = feed.change
@@ -37,28 +36,28 @@ module.exports = function(db, feedOpts) {
   feed.notify = []
   feed.batch = []
   feed.onready = ensureCount
-  feed.count = function(cb) {
+  feed.count = function (cb) {
     ensureCount(function (err) {
       if (err) return cb(err)
       cb(null, feed.change - start + 1)
-    });
+    })
   }
 
-  feed.append = function(value, cb) {
+  feed.append = function (value, cb) {
     feed.queued++
     feed.tentativeChange++
     if (!ready) queuedBeforeReady++
 
     if (!cb) cb = noop
     if (valueEncoding === 'binary' && !Buffer.isBuffer(value)) {
-      value = new Buffer(value)
+      value = Buffer.from(value)
     }
 
-    ensureCount(function(err) {
-      if (err) return release(cb, err)
+    ensureCount(function (err) {
+      if (err) return cb(err)
 
-      var batch = feed.batch
-      var change = ++feed.change
+      let batch = feed.batch
+      const change = ++feed.change
       batch.push({
         change: change,
         key: lexint.pack(change, 'hex'),
@@ -79,13 +78,13 @@ module.exports = function(db, feedOpts) {
             key: item.key,
             value: item.value
           }
-        }), function(err) {
+        }), function (err) {
           feed.queued = 0
-          var notify = feed.notify
+          const notify = feed.notify
 
           if (notify.length) {
             feed.notify = []
-            for (var i = 0; i < notify.length; i++) notify[i][0](1, notify[i][1])
+            for (let i = 0; i < notify.length; i++) notify[i][0](1, notify[i][1])
           }
 
           batch.forEach(function (item, i) {
@@ -100,17 +99,17 @@ module.exports = function(db, feedOpts) {
     if (typeof opts === 'function') return feed.createReadStream(null, opts)
     if (!opts) opts = {}
 
-    var since = typeof opts.since === 'number' ? opts.since : start - 1
-    var keys = opts.keys !== false
-    var values = opts.values !== false
-    var retOpts = {
+    let since = typeof opts.since === 'number' ? opts.since : start - 1
+    const keys = opts.keys !== false
+    const values = opts.values !== false
+    const retOpts = {
       keys: keys,
       values: values
     }
 
     if (opts.live) {
-      var ls = from.obj(function read(size, cb) {
-        feed.get(since + 1, function(err, value) {
+      const ls = from.obj(function read (size, cb) {
+        feed.get(since + 1, function (err, value) {
           if (err && err.notFound) return feed.notify.push([read, cb])
           if (err) return cb(err)
           cb(null, toResult(++since, value, retOpts))
@@ -129,7 +128,7 @@ module.exports = function(db, feedOpts) {
       }
     }
 
-    var rs = db.createReadStream({
+    const rs = db.createReadStream({
       gt: lexint.pack(since, 'hex'),
       limit: opts.limit,
       keys: keys,
@@ -138,9 +137,9 @@ module.exports = function(db, feedOpts) {
       valueEncoding: valueEncoding
     })
 
-    var format = function(data, enc, cb) {
-      var key = keys && lexint.unpack(values ? data.key : data, 'hex')
-      var val = values && keys ? data.value : data
+    const format = function (data, enc, cb) {
+      const key = keys && lexint.unpack(values ? data.key : data, 'hex')
+      const val = values && keys ? data.value : data
 
       cb(null, toResult(key, val, retOpts))
     }
@@ -163,9 +162,11 @@ module.exports = function(db, feedOpts) {
   }
 
   function toResult (key, val, opts) {
-    return !opts.keys ? val :
-      !opts.values ? key :
-      { change: key, value: val }
+    return !opts.keys
+      ? val
+      : !opts.values
+          ? key
+          : { change: key, value: val }
   }
 
   return feed

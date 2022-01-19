@@ -1,9 +1,9 @@
-var db = require('level')('db')
-var feed = require('./')(db)
+const db = require('level')('db')
+const feed = require('./')(db)
 
-feed.createReadStream({since:2, live:true})
+feed.createReadStream({ since: 2, live: true })
   .on('data', console.log)
 
-setTimeout(function() {
+setTimeout(function () {
   feed.append('world')
 }, 400)
